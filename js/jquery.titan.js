@@ -214,6 +214,22 @@
 							});
 						}
 					}
+					if (conditions.paginate) {
+						var pDefaults = {
+							perPage: 10,
+							overlap: 0,
+							page: 1
+						};
+						var opts = $.extend(pDefaults, conditions.paginate);
+						$.ajax({
+							url : $.controller.defaults.url + "/" + model + "/count",
+							data : conditions,
+							type : "GET",
+							success : function(data){
+								alert(data);
+							}
+						});
+					}
 				}
 				this.retrieve();
 			} else {
