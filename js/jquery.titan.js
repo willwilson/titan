@@ -1,5 +1,7 @@
 // KVC/KVO/Binding support
 (function($){
+	var willChangeStack = [];
+	var didChangeStack = [];
 	function makeChain(target, keys, fn, origTarget, origPath) {
 		var key = keys.shift();
 		if (keys.length > 0) {
@@ -23,22 +25,49 @@
 	}
 	
 	$.extend({
-		valueForKey: function(obj, key, value){
-			if ($.isFunction(obj[key])) {
-				return obj[key].call(obj, key, value);
-			} else {
-				if (value !== undefined) {
-					if (obj[key] !== value) {
-						var old = obj[key];
-						obj[key] = value;
-						$(obj).data("propertyRevision", $(obj).data("propertyRevision")+1);
-						$(obj).trigger(key + "-changed", {
-							oldValue: old,
-							newValue: obj[key]});
-					}
-				}
-				return obj[key];
+		willChangeValueForKey: function(obj, key) {
+			willChangeStack.push({obj: obj, key: key, val: $(obj).valueForKey(key)});
+		},
+		didChangeValueForKey: function(obj, key) {
+			var changed = willChangeStack.pop();
+			if (changed.key != key) {
+				console.log("Expected didChangeValueForKey: "+
+					changed.key + " but got " + key);
 			}
+			didChangeStack.push(changed);
+			if (willChangeStack.length == 0) {
+				var changes = didChangeStack;
+				didChangeStack = [];
+				$(changes).each(function(){
+					if ($(this.obj).valueForKey(this.key) !== this.val) {
+						$(this.obj).trigger(this.key + "-changed", {
+							oldValue: this.val,
+							newValue: $(this.obj).valueForKey(this.key)});
+					}
+				});
+			}
+		},
+		valueForKey: function(obj, key, value) {
+			if ((value != undefined) &&
+				(obj.automaticallyNotifiesObserversForKey === undefined ||
+					obj.automaticallyNotifiesObserversForKey(key))) {
+				$.willChangeValueForKey(obj, key);
+			}
+			var val;
+			if ($.isFunction(obj[key])) {
+				val = obj[key].call(obj, key, value);
+			} else {
+				if (value != undefined) {
+					obj[key] = value;
+				}
+				val = obj[key];
+			}
+			if ((value != undefined) &&
+				(obj.automaticallyNotifiesObserversForKey === undefined ||
+					obj.automaticallyNotifiesObserversForKey(key))) {
+				$.didChangeValueForKey(obj, key);
+			}
+			return val;
 		},
 		valueForKeyPath: function(obj, path, value){
 			var keys = path.split(".");
@@ -46,7 +75,7 @@
 			while(keys.length > 1) {
 				key = keys.shift();
 				obj = $(obj).valueForKey(key);
-				if (obj === undefined) {
+				if (obj == undefined) {
 					return undefined;
 				}
 			}
@@ -85,26 +114,29 @@
 				to: to,
 				fromAttr: fromAttr,
 				toAttr: toAttr,
-				lastToPropertyRevision: 0,
-				lastFromPropertyRevision: 0
+				updateTo: true,
+				updateFrom: true
 			};
 			$(from).data(fromAttr + $.data(to) + toAttr, binding);
 			binding.fromFn = $(from).observe(fromAttr, function(){
-				if (from.propertyRevision <= binding.lastFromPropertyRevision) {
+				if (binding.updateTo == false) {
+					binding.updateTo = true;
+					binding.updateFrom = true;
 					return;
 				}
-				binding.lastFromPropertyRevision = $(from).data("propertyRevision");
+				binding.updateFrom = false;
 				$(to).valueForKeyPath(toAttr, $(from).valueForKeyPath(fromAttr));
 			});
 			binding.toFn = $(to).observe(toAttr, function(){
-				if ($(to).propertyRevision <= binding.lastToPropertyRevision) {
+				if (binding.updateFrom == false) {
+					binding.updateTo = true;
+					binding.updateFrom = true;
 					return;
 				}
-				binding.lastToPropertyRevision = $(to).data("propertyRevision");
+				binding.updateTo = false; // don't do it again
 				$(from).valueForKeyPath(fromAttr, $(to).valueForKeyPath(toAttr));
 			});
-			binding.lastToPropertyRevision = $(to).data("propertyRevision");
-			binding.lastFromPropertyRevision = $(from).data("propertyRevision");
+			binding.updateTo = false;
 			$(from).valueForKeyPath(fromAttr, $(to).valueForKeyPath(toAttr));
 		},
 		disconnect: function(obj, fromAttr, to, toAttr) {
@@ -214,6 +246,13 @@
 							});
 						}
 					}
+					if (conditions.paginate) {
+						this.paginating = true;
+						this.overlap = conditions.paginate.overlap;
+						this.per_page = conditions.paginate.per_page;
+						this._page = 0;
+						delete this.conditions.paginate;
+					}
 				}
 				this.retrieve();
 			} else {
@@ -276,6 +315,13 @@
 	};
 	$.extend($.controller.array.prototype, {
 		root: "",
+		page: function(key, value) {
+			if (value !== undefined) {
+				this._page = value;
+				this.retrieve();
+			}
+			return this._page;
+		},
 		create: function(obj) {
 			var that = this;
 			$.controller.create(that.model, obj, {
@@ -310,6 +356,23 @@
 			var that = this;
 			var conditions = {};
 
+			function onSuccess(data) {
+				var found = false;
+				if (that._last_id) {
+					$(data).each(function(){
+						if (that._last_id  == this.id) {
+							found = true;
+							$(that).valueForKey("selection", this);
+							return false;
+						}
+					});
+				}
+				if ( ! found && data.length > 0) {
+					$(that).valueForKey("selection", data[0]);
+				}
+				$(that).valueForKey("contents", data);
+			}
+
 			if (that.master) {
 				var selection = $(that.master).valueForKey("selection");
 				if (selection) {
@@ -322,24 +385,30 @@
 			if ($(that).valueForKey("selection") !== undefined) {
 				that._last_id = $(that).valueForKeyPath("selection.id");
 			}
-			$.controller.retrieve(that.model, $.extend(conditions, this.conditions), {
-				success : function(data) {
-					var found = false;
-					if (that._last_id) {
-						$(data).each(function(){
-							if (that._last_id  == this.id) {
-								found = true;
-								$(that).valueForKey("selection", this);
-								return false;
-							}
+			conditions = $.extend(conditions, this.conditions);
+			if (this.paginating) {
+				$.controller.retrieve(that.model + "/count", conditions, {
+					success : function(total) {
+						that.total = total;
+						if (total > 0 && that._page === 0) {
+							that._page = 1;
+						}
+						var extra = that.overlap * (that.total / that.per_page);
+						that.pages = parseInt(that.total / (that.per_page - that.overlap));
+						that.offset = (that._page-1)*(that.per_page-that.overlap);
+						conditions['limit'] = that.per_page;
+						conditions['offset'] = that.offset;
+						$.controller.retrieve(that.model, conditions, {
+							success : onSuccess
 						});
 					}
-					if ( ! found && data.length > 0) {
-						$(that).valueForKey("selection", data[0]);
-					}
-					$(that).valueForKey("contents", data);
-				}
-			});
+				});
+
+			} else {
+				$.controller.retrieve(that.model, conditions, {
+					success : onSuccess
+				});
+			}
 		}
 	});
 })(jQuery);
@@ -350,7 +419,7 @@
 		var tpl = this;
 		var defaults = {};
 		tpl.root = root;
-		tpl.pristine = $(root).cloneTemplate(false)[0];
+		tpl.pristine = $(root).cloneTemplate(true)[0];
 		tpl.contents = [];
 		tpl.controller = controller;
 		this.options = $.extend(defaults, options);
@@ -375,7 +444,7 @@
 							$(curData).each(function(){
 								$(tmp).append(
 									$.visit(
-										$(elem).cloneTemplate(false)[0],
+										$(elem).cloneTemplate(true)[0],
 										this,
 										$.template.defaultRender));
 							});
@@ -383,7 +452,12 @@
 							$(elem).append($(tmp).contents());
 							return false;
 						} else {
-							$(elem).text(curData);
+							var flat = classes.toString();
+							if (/opt_html/.test(classes)) {
+								$(elem).html(curData);
+							} else {
+								$(elem).text(curData);
+							}
 							return true;
 						}
 					}
@@ -411,7 +485,7 @@
 				$(tpl.root).empty();
 				$(contents).each(function(i){
 					$(tpl.root).append($.visit(
-						$(tpl.pristine).cloneTemplate(false)[0],
+						$(tpl.pristine).cloneTemplate(true)[0],
 						this,
 						$.template.defaultRender));
 				});
