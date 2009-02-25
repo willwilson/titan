@@ -455,6 +455,10 @@
 							var flat = classes.toString();
 							if (/opt_html/.test(classes)) {
 								$(elem).html(curData);
+							} else if (/opt_append/.test(classes)) {
+								$(elem).append(curData);
+							} else if (/opt_prepend/.test(classes)) {
+								$(elem).prepend(curData);
 							} else {
 								$(elem).text(curData);
 							}
