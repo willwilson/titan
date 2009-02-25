@@ -249,7 +249,7 @@
 					if (conditions.paginate) {
 						this.paginating = true;
 						this.overlap = conditions.paginate.overlap;
-						this.per_page = conditions.paginate.per_page;
+						this.per_page = conditions.paginate.perPage;
 						this._page = 0;
 						delete this.conditions.paginate;
 					}

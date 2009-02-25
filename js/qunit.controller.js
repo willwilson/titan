@@ -126,6 +126,6 @@ test("Test paging controllers", function(){
 		equals($(list).valueForKey("page"), 1, "check current page is 1");
 		$(list).valueForKey("page", 19);
 	});
-	list = $.controller.array("lots", {paginate: {per_page: 5, overlap: 2}});
+	list = $.controller.array("lots", {paginate: {perPage: 5, overlap: 2}});
 	ok(list, "list controller instantiated");
 });
