@@ -118,7 +118,7 @@ test("Test paging controllers", function(){
 			equals($(list).valueForKey("contents").length, 3, "count list objects");
 			equals($(list).valueForKey("page"), 19, "check current page is 19");
 			equals($(list).valueForKey("pages"), 19, "check pages is 19");
-			equals($(list).valueForKey("per_page"), 5, "check current page is 2");
+			equals($(list).valueForKey("perPage"), 5, "check current page is 2");
 			equals($(list).valueForKey("offset"), 54, "check item offset is 4");
 			start();
 		});

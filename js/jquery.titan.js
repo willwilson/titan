@@ -249,7 +249,7 @@
 					if (conditions.paginate) {
 						this.paginating = true;
 						this.overlap = conditions.paginate.overlap;
-						this.per_page = conditions.paginate.perPage;
+						this.perPage = conditions.paginate.perPage;
 						this._page = 0;
 						delete this.conditions.paginate;
 					}
@@ -393,10 +393,10 @@
 						if (total > 0 && that._page === 0) {
 							that._page = 1;
 						}
-						var extra = that.overlap * (that.total / that.per_page);
-						that.pages = parseInt(that.total / (that.per_page - that.overlap));
-						that.offset = (that._page-1)*(that.per_page-that.overlap);
-						conditions['limit'] = that.per_page;
+						var extra = that.overlap * (that.total / that.perPage);
+						that.pages = parseInt(that.total / (that.perPage - that.overlap));
+						that.offset = (that._page-1)*(that.perPage-that.overlap);
+						conditions['limit'] = that.perPage;
 						conditions['offset'] = that.offset;
 						$.controller.retrieve(that.model, conditions, {
 							success : onSuccess
