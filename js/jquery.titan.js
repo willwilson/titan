@@ -805,21 +805,24 @@
 		});
 	}// }}}
 	
-	$.formatDate = function(format, prop) {
+	$.formatDate = function(format, prop, tzoffset) {
 		return function(elem, data){
 			var ca = $(data).valueForKey(prop);
 			if (ca == undefined || ca == ""){
 				$(elem).text("");
 			} else {
 				var m = ca.match(/(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)/);
-				var t = new Date(m[1], m[2]-1, m[3], m[4], m[5], m[6]).getTime()*0.001;
+				var t = new Date(m[1], m[2]-1, m[3], m[4], m[5], m[6]);
+				var tz = 0;
+				if (tzoffset) { tz = t.getTimezoneOffset()*60; }
+				t = (t.getTime()*0.001)-tz;
 				$(elem).text(date(format, t));
 			}
 		}
 	}
 	
-	$.fn.formatDate = function(format, prop) {
-		return $(this).format($.formatDate(format, prop));
+	$.fn.formatDate = function(format, prop, tzoffset) {
+		return $(this).format($.formatDate(format, prop, tzoffset));
 	}
 
 	function number_format( number, decimals, dec_point, thousands_sep ) {
