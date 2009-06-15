@@ -344,19 +344,21 @@
 				autoRetrieve: true
 			};
 			options = $.extend(defaults, options);
-			$.controller.update(that.model, obj, {
+			$.controller.update(that.model, obj, $.extend({
 				success : function(data) {
 					if (options.autoRetrieve) {
 						that.retrieve();
 					}
 				}
-			});
+			}, options));
 		},
 		retrieve: function() {
 			var that = this;
 			var conditions = {};
 
 			function onSuccess(data) {
+				//data = data.items;
+				that._last_id = undefined;
 				var found = false;
 				if (that._last_id) {
 					$(data).each(function(){
@@ -368,7 +370,7 @@
 					});
 					if ( ! found && data.length > 0) {
 						$(that).valueForKey("selection", data[0]);
-					} else {
+					} else if (data.length == 0) {
 						$.willChangeValueForKey(that, "selection");
 						that.selection = undefined;
 						$.didChangeValueForKey(that, "selection");
@@ -489,8 +491,8 @@
 		render: function(){
 			var tpl = this;
 			var contents = $(tpl).valueForKey("contents");
-			$(tpl.root).empty();
 			if (contents) {
+				$(tpl.root).empty();
 				$(contents).each(function(i){
 					$(tpl.root).append($.visit(
 						$(tpl.pristine).cloneTemplate(true)[0],
