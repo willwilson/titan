@@ -366,9 +366,13 @@
 							return false;
 						}
 					});
-				}
-				if ( ! found && data.length > 0) {
-					$(that).valueForKey("selection", data[0]);
+					if ( ! found && data.length > 0) {
+						$(that).valueForKey("selection", data[0]);
+					} else {
+						$.willChangeValueForKey(that, "selection");
+						that.selection = undefined;
+						$.didChangeValueForKey(that, "selection");
+					}
 				}
 				$(that).valueForKey("contents", data);
 			}
@@ -485,8 +489,8 @@
 		render: function(){
 			var tpl = this;
 			var contents = $(tpl).valueForKey("contents");
+			$(tpl.root).empty();
 			if (contents) {
-				$(tpl.root).empty();
 				$(contents).each(function(i){
 					$(tpl.root).append($.visit(
 						$(tpl.pristine).cloneTemplate(true)[0],
