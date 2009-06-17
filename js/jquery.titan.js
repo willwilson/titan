@@ -344,20 +344,19 @@
 				autoRetrieve: true
 			};
 			options = $.extend(defaults, options);
-			$.controller.update(that.model, obj, $.extend({
+			$.controller.update(that.model, obj, {
 				success : function(data) {
 					if (options.autoRetrieve) {
 						that.retrieve();
 					}
 				}
-			}, options));
+			});
 		},
 		retrieve: function() {
 			var that = this;
 			var conditions = {};
 
 			function onSuccess(data) {
-				//data = data.items;
 				that._last_id = undefined;
 				var found = false;
 				if (that._last_id) {
@@ -368,13 +367,13 @@
 							return false;
 						}
 					});
-					if ( ! found && data.length > 0) {
-						$(that).valueForKey("selection", data[0]);
-					} else if (data.length == 0) {
-						$.willChangeValueForKey(that, "selection");
-						that.selection = undefined;
-						$.didChangeValueForKey(that, "selection");
-					}
+				}
+				if ( ! found && data.length > 0) {
+					$(that).valueForKey("selection", data[0]);
+				} else {
+					$.willChangeValueForKey(that, "selection");
+					that.selection = undefined;
+					$.didChangeValueForKey(that, "selection");
 				}
 				$(that).valueForKey("contents", data);
 			}
