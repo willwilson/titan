@@ -196,6 +196,7 @@
 		return param_string;
 	};
 	$.serialize.recursive_serialize = function(object, values, prefix){
+		var key;
 		for (key in object) {
 			if (typeof object[key] == 'object') {
 				if (prefix.length > 0) {
@@ -370,11 +371,11 @@
 					});
 					if ( ! found && data.length > 0) {
 						$(that).valueForKey("selection", data[0]);
-					} else if (data.length == 0) {
-						$.willChangeValueForKey(that, "selection");
-						that.selection = undefined;
-						$.didChangeValueForKey(that, "selection");
 					}
+				} else {
+					$.willChangeValueForKey(that, "selection");
+					that.selection = undefined;
+					$.didChangeValueForKey(that, "selection");
 				}
 				$(that).valueForKey("contents", data);
 			}
@@ -435,15 +436,17 @@
 		});
 		$(this).connect("contents", controller, "contents");
 	}
+	$.template.prefix = "ti_";
 	$.template.defaultRender = function(elem, data) {
 		$(elem).data("data", data);
 		if ($(elem).data("format")) {
 			return $(elem).data("format").call(this, elem, data);
 		} else {
 			var classes = elem.className.split(/\s+/);
+			var prefix = new RegExp("^"+$.template.prefix);
 			for (var i = 0; i < classes.length; i++) {
-				if (/^ti_/.test(classes[i])) {
-					var curData = data[classes[i].replace(/^ti_/, "")];
+				if (prefix.test(classes[i])) {
+					var curData = data[classes[i].replace(prefix, "")];
 					if (curData != undefined) {
 						if (curData.constructor == Array) {
 							var tmp = $("<div></div>");
