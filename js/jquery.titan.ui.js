@@ -5,6 +5,8 @@
 			var container = this;
 			var user_update;
 			var autoRetrieve = true;
+			var complete = function(){};
+			var start = function(){};
 			if (typeof controller == "string") {
 				return $(this).sortable(controller, options);
 			}
@@ -14,15 +16,26 @@
 					autoRetrieve = options.autoRetrieve;
 					delete options.autoRetrieve;
 				}
+				if (options.complete !== undefined) {
+					complete = options.complete;
+					delete options.complete;
+				}
+				if (options.start !== undefined) {
+					start = options.start;
+					delete options.start;
+				}
 			}
 			$(this).sortable($.extend(options, {
 				update: function(event, ui){
+					if(start){
+						start.call(this);
+					}
 					items = $(container).sortable('option', 'items');
 					$(container).find(items).each(function(idx){
 						if (this === ui.item[0]) {
 							controller.update({
 								id: $(this).data("data").id,
-								position: $.fn.rearrange.offset + idx}, {autoRetrieve: autoRetrieve});
+								position: $.fn.rearrange.offset + idx}, {autoRetrieve: autoRetrieve, complete: complete });
 						}
 					});
 					if (user_update) {
